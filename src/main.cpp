@@ -1,3 +1,4 @@
+#include <vector>
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
@@ -223,9 +224,62 @@ int main(void)
 	// histogram is a valid FM histogram, and a 3-peak (1t:1.5t:2t) histogram
 	// is a valid MFM histogram.
 
-	// Do the Deal!
-	// Or the decoding. Whatever.
-	
+	// Data decoder begins here.
+
+	// Current 1t reference. Assumed to be the position of the 1st peak.
+	float t = peaks[0] + minval;
+	// Bit-vector to store MFM stream
+	vector<bool> mfmbits;
+
+	// Iterate over input stream and decode
+	for (size_t i=0; i<buflen; i++) {
+		// Calculate error values for this timing value vs. 1t, 1.5t and 2.0t
+		float error_t10 = fabs(buf[i] - (t));
+		float error_t15 = fabs(buf[i] - (t * 1.5));
+		float error_t20 = fabs(buf[i] - (t * 2.0));
+
+		// Figure out which error is the lowest
+		if ((error_t10 < error_t15) && (error_t10 < error_t20)) {
+			// t1.0 is the lowest. "01" sequence.
+			mfmbits.push_back(false);
+			mfmbits.push_back(true);
+		} else if ((error_t15 < error_t10) && (error_t15 < error_t20)) {
+			// t1.5 is the lowest. "001" sequence.
+			mfmbits.push_back(false);
+			mfmbits.push_back(false);
+			mfmbits.push_back(true);
+		} else {
+			// t2.0 is the lowest. "0001" sequence.
+			mfmbits.push_back(false);
+			mfmbits.push_back(false);
+			mfmbits.push_back(false);
+			mfmbits.push_back(true);
+		}
+	}
+
+	printf("mfmbits count = %d\n", mfmbits.size());
+
+
+	// Now process the MFM bitstream to find the sync markers
+	unsigned long bits = 0;
+	unsigned int num_idam = 0, num_dam = 0;
+	for (size_t i=0; i<mfmbits.size(); i++) {
+		// get next bit
+		bits = (bits << 1) + (mfmbits[i] ? 1 : 0);
+
+		// compare buffer with sync-longword (sync-A1 : FE, aka IDAM)
+		if (bits == 0x44895554) {
+			// ID Address Mark
+			printf("IDAM at %d\n", i);
+			num_idam++;
+		} else if (bits == 0x44895545) {
+			// Data Address Mark
+			printf("DAM at %d\n", i);
+			num_dam++;
+		}
+	}
+
+	printf("Seen: %d IDAMs, %d DAMs\n", num_idam, num_dam);
 
 	// clean-up
 	delete[] histogram;
