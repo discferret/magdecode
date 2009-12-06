@@ -161,6 +161,32 @@ int main(void)
 		printf("No peaks found.\n");
 	}
 
+	// Loop over the peaks and see if we have a cluster which are close to the
+	// 1t:1.5t:2t profile of MFM.
+	//
+	// TODO: implement this
+
+	// Basically, we:
+	//   - Start at 1.5t and work backwards (and forwards) up to 1t.
+	//   - Store the position of the closest peak to 1.5t
+	//   - Repeat for 2t
+	//
+	// The decoder algorithm doesn't need to know where the peaks are, but we
+	// can use peak-position testing as part of the Confidence Value
+	// calculation. That is, "how confident are we that this really is MFM data?"
+	//
+	// Note that the MFM CODEC ideally needs to know where the 1t peak is during
+	// initialisation. Otherwise we need to know the data rate and sample rate,
+	// and set it to a sane default.
+	//
+	// Also note that the MFM CODEC can handle FM too. So a 2-peak (1t:2t)
+	// histogram is a valid FM histogram, and a 3-peak (1t:1.5t:2t) histogram
+	// is a valid MFM histogram.
+
+	// Do the Deal!
+	// Or the decoding. Whatever.
+	
+
 	// clean-up
 	delete[] histogram;
 	return 0;
