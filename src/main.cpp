@@ -146,7 +146,8 @@ int main(void)
 		if (histogram[i] < round(mean * 0.1)) histogram[i] = 0;
 	}
 
-	// DEBUG: print out the histogram
+#if 0
+	// DEBUG: print out the clipped histogram
 	printf("histpoint\ttime\tcount\n");
 	for (size_t i=0; i<=(maxval - minval); i++) {
 		// calculate time in microseconds
@@ -154,7 +155,7 @@ int main(void)
 		float t = ((i+minval)*(1.0/40.0e6)) * 1.0e6;
 		printf("%d\t%0.2f\t%d\n", i+minval, t, histogram[i]);
 	}
-
+#endif
 
 	// Peaks are found by measuring the slope of the current and previous histogram
 	// points. To put it another way:
