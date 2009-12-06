@@ -1,9 +1,12 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
 #include <limits>
 
 using namespace std;
 
+// Load a track image from a file
+// TODO: rewrite this using fstream
 size_t LoadTrackImage(const char *filename, unsigned int *buffer)
 {
 	FILE *fp;
@@ -99,6 +102,33 @@ int main(void)
 		histogram[buf[i] - minval]++;
 	}
 
+	// Calculate the mean value of the histogram
+	float mean = 0;
+	for (size_t i=0; i<=(maxval-minval); i++) {
+		mean += histogram[i];
+	}
+	mean /= ((maxval - minval) + 1);
+	printf("mean = %0.5f\n", mean);
+
+	// Calculate the standard deviation
+	float sd = 0, osqr = 0;
+	for (size_t i=0; i<=(maxval - minval); i++) {
+		// calculate deviation from mean
+		sd = histogram[i] - mean;
+		// square the deviation
+		sd = sd * sd;
+		// add to the variance accumulator
+		osqr += sd;
+	}
+
+	// Calculate the mean variance
+	osqr /= ((float)(maxval - minval + 1));
+
+	printf("o^2 (mean variance) = %0.2f\n", osqr);
+
+	// Take the square root of the variance to get the standard deviation
+	printf("standard deviation = %0.4f\n", sqrtf(osqr));
+
 #if 0
 	// DEBUG: print out the histogram
 	printf("histpoint,time,count\n");
@@ -111,12 +141,20 @@ int main(void)
 #endif
 
 	// Start by clipping histogram noise. Need to find outliers, then eliminate them.
-	// For now, just throw away anything with a count less than 10 or so.
-	// FIXME: need a better algorithm for this! maybe calculate mean value of histo
-	// and clip anything less than 1% of mean?
+	// For now, just throw away anything with a count less than 1/10th of the mean.
 	for (size_t i=0; i<=(maxval-minval); i++) {
-		if (histogram[i] < 10) histogram[i] = 0;
+		if (histogram[i] < round(mean * 0.1)) histogram[i] = 0;
 	}
+
+	// DEBUG: print out the histogram
+	printf("histpoint\ttime\tcount\n");
+	for (size_t i=0; i<=(maxval - minval); i++) {
+		// calculate time in microseconds
+		// one count is 1/(40e6) seconds; mul by 1e6 to get usecs
+		float t = ((i+minval)*(1.0/40.0e6)) * 1.0e6;
+		printf("%d\t%0.2f\t%d\n", i+minval, t, histogram[i]);
+	}
+
 
 	// Peaks are found by measuring the slope of the current and previous histogram
 	// points. To put it another way:
@@ -142,7 +180,6 @@ int main(void)
 		// if this delta is  negative and last delta was positive then we've
 		// found a peak
 		if ((delta <= 0) && (lastdelta > 0)) {
-//			printf("peak: %3d  [delta %2d]\n", i+minval, delta);
 			peaks[numpeaks++] = i;
 		}
 
