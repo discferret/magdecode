@@ -177,10 +177,12 @@ int main(void)
 		// calculate delta
 		ssize_t delta = histogram[i] - lasthist;
 
-		// if this delta is  negative and last delta was positive then we've
-		// found a peak
+		// if this delta is negative and last delta was positive then we've
+		// found a peak. Note that the peak is actually in the last histogram
+		// 'bin'; we're on a negative slope here, thus the 'last' point was
+		// the highest point (peak) as far as we're concerned.
 		if ((delta <= 0) && (lastdelta > 0)) {
-			peaks[numpeaks++] = i;
+			peaks[numpeaks++] = i-1;
 		}
 
 		// Update last-histogram-point and last-delta
