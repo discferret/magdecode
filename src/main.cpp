@@ -4,7 +4,7 @@
 
 using namespace std;
 
-size_t LoadTrackImage(char *filename, unsigned int *buffer)
+size_t LoadTrackImage(const char *filename, unsigned int *buffer)
 {
 	FILE *fp;
 	size_t filelen;
