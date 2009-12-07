@@ -255,9 +255,9 @@ int main(void)
 	// Iterate over input stream and decode
 	for (size_t i=0; i<buflen; i++) {
 		// Calculate error values for this timing value vs. 1t, 1.5t and 2.0t
-		float error_t10 = fabs(buf[i] - (t));
-		float error_t15 = fabs(buf[i] - (t * 1.5));
-		float error_t20 = fabs(buf[i] - (t * 2.0));
+		float error_t10 = fabs((buf[i] / 1.0) - t);
+		float error_t15 = fabs((buf[i] / 1.5) - t);
+		float error_t20 = fabs((buf[i] / 2.0) - t);
 
 		// Figure out which error is the lowest
 		if ((error_t10 < error_t15) && (error_t10 < error_t20)) {
