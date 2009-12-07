@@ -2,7 +2,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
+#include <cctype>
 #include <limits>
+
+// cstdint would be better, but it's in C++0x; gcc's 0x support is still beta.
+#include <stdint.h>
 
 using namespace std;
 
@@ -64,6 +68,23 @@ size_t LoadTrackImage(const char *filename, unsigned int *buffer)
 	fclose(fp);
 
 	return count;
+}
+
+// Decode 16 MFM bits into a single byte
+unsigned char decodeMFM(vector<bool> bits, size_t startpos)
+{
+	uint8_t buf;
+	int cnt = 1;
+
+	// Get 8 bits of data, discard every other bit
+	for (vector<bool>::iterator i = bits.begin()+startpos; i<bits.begin()+startpos+16; i++) {
+		if ((cnt % 2) == 0) {
+			buf = (buf << 1) + (*i ? 1 : 0);
+		}
+		cnt++;
+	}
+
+	return buf;
 }
 
 // main fnc
@@ -264,18 +285,37 @@ int main(void)
 	unsigned long bits = 0;
 	unsigned int num_idam = 0, num_dam = 0;
 	for (size_t i=0; i<mfmbits.size(); i++) {
+		bool do_dump=false;
+
 		// get next bit
 		bits = (bits << 1) + (mfmbits[i] ? 1 : 0);
 
 		// compare buffer with sync-longword (sync-A1 : FE, aka IDAM)
 		if (bits == 0x44895554) {
 			// ID Address Mark
-			printf("IDAM at %d\n", i);
+			printf("IDAM at %d\n", i+1);
 			num_idam++;
+			do_dump = true;
 		} else if (bits == 0x44895545) {
 			// Data Address Mark
-			printf("DAM at %d\n", i);
+			printf("DAM at %d\n", i+1);
 			num_dam++;
+			do_dump = true;
+		}
+
+		if (do_dump) {
+			// dump next few bytes of data
+			// TODO: use hex_dump() and a char array instead
+			printf("\t");
+			for (size_t x=i+1; x<i+(16*16)+1; x+=16) {
+				printf("%02X ", decodeMFM(mfmbits, x));
+			}
+			printf("\t");
+			for (size_t x=i+1; x<i+(16*16)+1; x+=16) {
+				unsigned char c = decodeMFM(mfmbits, x);
+				printf("%c", (isprint(c) ? c : '.') );
+			}
+			printf("\n");
 		}
 	}
 

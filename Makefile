@@ -1,6 +1,6 @@
 # Phil's multiplatform makefile template
 # With auto-incrementing build number and automatic version.h generation
-# Version 1.5, 2009-10-26
+# Version 1.6, 2009-10-26
 #
 # The latest version of this Makefile can be found at http://www.philpem.me.uk/
 #
@@ -84,6 +84,8 @@
 #
 #
 # Change history:
+#   1.6 - Added CFLAGS and CXXFLAGS to the command-lines for the dependency
+#         building commands. This was causing issues with C99 / C++0x mode.
 #   1.5 - Added support for Mercurial revision (changeset ID) display
 #         Fixed a few issues with Subversion support (svn: and version 0 would
 #         be displayed for exported code)
