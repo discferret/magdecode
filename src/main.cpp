@@ -302,19 +302,25 @@ int main(void)
 		// compare buffer with sync-longword (sync-A1 : FE, aka IDAM)
 		if (bits == 0x44895554) {
 			// ID Address Mark
+			// i+1 because "i" is the last bit of the IDAM marker; we want the
+			// first bit of the new data byte (encoded word).
 			printf("IDAM at %d\n", i+1);
 			num_idam++;
 			do_dump = true;
 		} else if (bits == 0x44895545) {
 			// Data Address Mark
+			// i+1 because "i" is the last bit of the DAM marker; we want the
+			// first bit of the new data byte (encoded word).
 			printf("DAM at %d\n", i+1);
 			num_dam++;
 			do_dump = true;
 		}
 
 		if (do_dump) {
-			// dump next few bytes of data
+			// dump next few bytes of data in hex
 			// TODO: use hex_dump() and a char array instead
+			// i+1 because "i" is the last bit of the (I)DAM marker; we want
+			// the first bit of the new data byte (encoded word).
 			printf("\t");
 			for (size_t x=i+1; x<i+(16*16)+1; x+=16) {
 				printf("%02X ", decodeMFM(mfmbits, x));
