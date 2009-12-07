@@ -264,17 +264,26 @@ int main(void)
 			// t1.0 is the lowest. "01" sequence.
 			mfmbits.push_back(false);
 			mfmbits.push_back(true);
+
+			// Update reference T
+			t = (0.95 * t) + (0.05 * (buf[i] / 1.0));
 		} else if ((error_t15 < error_t10) && (error_t15 < error_t20)) {
 			// t1.5 is the lowest. "001" sequence.
 			mfmbits.push_back(false);
 			mfmbits.push_back(false);
 			mfmbits.push_back(true);
+
+			// Update reference T
+			t = (0.95 * t) + (0.05 * (buf[i] / 1.5));
 		} else {
 			// t2.0 is the lowest. "0001" sequence.
 			mfmbits.push_back(false);
 			mfmbits.push_back(false);
 			mfmbits.push_back(false);
 			mfmbits.push_back(true);
+
+			// Update reference T
+			t = (0.95 * t) + (0.05 * (buf[i] / 2.0));
 		}
 	}
 
