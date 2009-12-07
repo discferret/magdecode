@@ -150,6 +150,7 @@ MAKE	=	make
 CC		=	gcc
 CXX		=	g++
 CFLAGS	=	-Wall -pedantic -std=gnu99 $(EXT_CFLAGS)
+#CXXFLAGS=	-Wall -pedantic -std=gnu++0x $(EXT_CXXFLAGS)
 CXXFLAGS=	-Wall -pedantic $(EXT_CXXFLAGS)
 LDFLAGS	=	$(EXT_LDFLAGS)
 RM		=	rm
@@ -381,17 +382,17 @@ src/%.c:	src/%.l
 ###
 # make dependencies for our source files
 dep/%.d:	src/%.c
-	$(CC) -MM $(CPPFLAGS) $< > $@.$$$$; \
+	$(CC) -MM $(CFLAGS) $(CPPFLAGS) $< > $@.$$$$; \
 		sed 's,\($*\)\.o[ :]*,obj/\1.o $@ : ,g' < $@.$$$$ > $@; \
 		rm -f $@.$$$$
 
 dep/%.d:	src/%.cpp
-	$(CXX) -MM $(CPPFLAGS) $< > $@.$$$$; \
+	$(CXX) -MM $(CXXFLAGS) $(CPPFLAGS) $< > $@.$$$$; \
 		sed 's,\($*\)\.o[ :]*,obj/\1.o $@ : ,g' < $@.$$$$ > $@; \
 		rm -f $@.$$$$
 
 dep/%.d:	src/%.cc
-	$(CXX) -MM $(CPPFLAGS) $< > $@.$$$$; \
+	$(CXX) -MM $(CXXFLAGS) $(CPPFLAGS) $< > $@.$$$$; \
 		sed 's,\($*\)\.o[ :]*,obj/\1.o $@ : ,g' < $@.$$$$ > $@; \
 		rm -f $@.$$$$
 
