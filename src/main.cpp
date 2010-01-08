@@ -341,6 +341,7 @@ int main(int argc, char **argv)
 					break;
 				default:
 					printf("unknown (0x%02X)", idambuf[3]);
+					next_data_dump = 0;
 					break;
 			}
 
