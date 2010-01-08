@@ -307,6 +307,7 @@ int main(int argc, char **argv)
 	// Now process the MFM bitstream to find the sync markers
 	unsigned long bits = 0;
 	unsigned int num_idam = 0, num_dam = 0;
+	size_t next_data_dump = 0;
 	for (size_t i=0; i<mfmbits.size(); i++) {
 		size_t dump=0;
 
@@ -321,13 +322,39 @@ int main(int argc, char **argv)
 			printf("IDAM at %d\n", i+1);
 			num_idam++;
 			dump = 5;
+
+			// decode the IDAM
+			char *idambuf = new char[5];
+			for (size_t x=0; x<5; x++) {
+				idambuf[x] = decodeMFM(mfmbits, i+(x*16)+1);
+			}
+
+			printf("\tIDAM = Track %2d, Side %d, Sector %2d; sector size ",
+					idambuf[0], idambuf[1], idambuf[2]);
+			switch (idambuf[3]) {
+				case 0x00:
+				case 0x01:
+				case 0x02:
+				case 0x03:
+					printf("%d", 1 << (7+idambuf[3]));
+					next_data_dump = 1<<(7+idambuf[3]);
+					break;
+				default:
+					printf("unknown (0x%02X)", idambuf[3]);
+					break;
+			}
+
+			// check the CRC
+
+			delete idambuf;
 		} else if (bits == 0x44895545) {
 			// Data Address Mark
 			// i+1 because "i" is the last bit of the DAM marker; we want the
 			// first bit of the new data byte (encoded word).
-			printf("DAM at %d\n", i+1);
+			printf("DAM at %d%s\n", i+1, (next_data_dump == 0) ? " [ERR: no preceding IDAM]" : "");
 			num_dam++;
-			dump = 512;
+			dump = next_data_dump;
+			next_data_dump = 0;
 		}
 
 		if (dump > 0) {
