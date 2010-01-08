@@ -1,3 +1,4 @@
+#include <iostream>
 #include <vector>
 #include <cstdio>
 #include <cstdlib>
@@ -92,14 +93,23 @@ unsigned char decodeMFM(vector<bool> bits, size_t startpos)
 }
 
 // main fnc
-int main(void)
+int main(int argc, char **argv)
 {
 	unsigned int buf[128*1024];
 	size_t buflen;
 	size_t maxval = 0;
 	size_t minval = ((size_t)-1);
 
-	buflen = LoadTrackImage("memdump.bin", buf);
+	if (argc < 2) {
+		cout << "syntax: " << argv[0] << " filename\n";
+		return -1;
+	}
+
+	buflen = LoadTrackImage(argv[1], buf);
+	if (buflen < 1) {
+		cout << "error reading input file \"" << argv[1] << "\"\n";
+		return -1;
+	}
 	printf("buflen = %lu\n", (unsigned long)buflen);
 
 	// calculate RPM and data rate
