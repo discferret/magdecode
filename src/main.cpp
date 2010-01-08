@@ -8,6 +8,10 @@
 // cstdint would be better, but it's in C++0x; gcc's 0x support is still beta.
 #include <stdint.h>
 
+extern "C" {
+#include "hexdump.h"
+}
+
 using namespace std;
 
 // Load a track image from a file
@@ -294,7 +298,7 @@ int main(void)
 	unsigned long bits = 0;
 	unsigned int num_idam = 0, num_dam = 0;
 	for (size_t i=0; i<mfmbits.size(); i++) {
-		bool do_dump=false;
+		size_t dump=0;
 
 		// get next bit
 		bits = (bits << 1) + (mfmbits[i] ? 1 : 0);
@@ -306,31 +310,28 @@ int main(void)
 			// first bit of the new data byte (encoded word).
 			printf("IDAM at %d\n", i+1);
 			num_idam++;
-			do_dump = true;
+			dump = 5;
 		} else if (bits == 0x44895545) {
 			// Data Address Mark
 			// i+1 because "i" is the last bit of the DAM marker; we want the
 			// first bit of the new data byte (encoded word).
 			printf("DAM at %d\n", i+1);
 			num_dam++;
-			do_dump = true;
+			dump = 512;
 		}
 
-		if (do_dump) {
+		if (dump > 0) {
 			// dump next few bytes of data in hex
 			// TODO: use hex_dump() and a char array instead
 			// i+1 because "i" is the last bit of the (I)DAM marker; we want
 			// the first bit of the new data byte (encoded word).
-			printf("\t");
-			for (size_t x=i+1; x<i+(16*16)+1; x+=16) {
-				printf("%02X ", decodeMFM(mfmbits, x));
+			//
+			char *buffer = new char[dump];
+			for (size_t x=0; x<dump; x++) {
+				buffer[x] = decodeMFM(mfmbits, i+(x*16)+1);
 			}
-			printf("\t");
-			for (size_t x=i+1; x<i+(16*16)+1; x+=16) {
-				unsigned char c = decodeMFM(mfmbits, x);
-				printf("%c", (isprint(c) ? c : '.') );
-			}
-			printf("\n");
+			hex_dump(buffer, dump);
+			delete[] buffer;
 		}
 	}
 

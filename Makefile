@@ -111,7 +111,7 @@ BUILD_TYPE	?=	debug
 TARGET		=	test
 
 # source files that produce object files
-SRC			=	main.cpp
+SRC			=	main.cpp hexdump.c
 
 # source type - either "c" or "cpp" (C or C++)
 SRC_TYPE	=	cpp
