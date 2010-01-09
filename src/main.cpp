@@ -15,6 +15,66 @@ extern "C" {
 
 using namespace std;
 
+// CRC-16/CCITT implementation
+// Based on code from http://www.sanity-free.org/133/crc_16_ccitt_in_csharp.html
+class CRC16 {
+	private:
+		static const unsigned int poly = 4129;
+		unsigned int table[256];
+		unsigned int crcval, initval;
+	public:
+		CRC16(unsigned int initval = 0xFFFF) {
+			this->initval = this->crcval = initval;
+
+			unsigned int temp, a;
+			for (size_t i=0; i<(sizeof(this->table)/sizeof(this->table[0])); ++i) {
+				temp = 0;
+
+				a = (unsigned int) i << 8;
+				
+				for (int j=0; j < 8; ++j) {
+					if(((temp ^ a) & 0x8000) != 0) {
+						temp = (unsigned int)((temp << 1) ^ poly);
+					} else {
+						temp <<= 1;
+					}
+					a <<= 1;
+				}
+
+				table[i] = temp;
+			}
+		}
+
+		// calculate crc without updating internal state
+		unsigned int calculate(void *buf, size_t len) {
+			unsigned int crc = this->crcval;
+
+			for (size_t i=0; i<len; i++) {
+				char x = ((unsigned char *)buf)[i];
+				crc = ((crc << 8) ^ this->table[((crc >> 8) ^ (0xff & x))]) & 0xffff;
+			}
+
+			return crc;
+		}
+
+		// calculate crc and update internal state afterwards
+		// used for partial crcs
+		unsigned int update(void *buf, size_t len) {
+			this->crcval = this->calculate(buf, len);
+			return this->crcval;
+		}
+
+		// reset crc to initialisation default
+		void reset(void) {
+			this->crcval = this->initval;
+		}
+
+		// reset crc to arbitrary value and change init default accordingly
+		void reset(unsigned int initval) {
+			this->crcval = this->initval = initval;
+		}
+};
+
 // Load a track image from a file
 // TODO: rewrite this using fstream
 size_t LoadTrackImage(const char *filename, unsigned int *buffer)
@@ -321,11 +381,11 @@ int main(int argc, char **argv)
 			// first bit of the new data byte (encoded word).
 			printf("IDAM at %d\n", i+1);
 			num_idam++;
-			dump = 5;
+			dump = 6;
 
 			// decode the IDAM
-			char *idambuf = new char[5];
-			for (size_t x=0; x<5; x++) {
+			unsigned char *idambuf = new unsigned char[6];
+			for (size_t x=0; x<6; x++) {
 				idambuf[x] = decodeMFM(mfmbits, i+(x*16)+1);
 			}
 
@@ -346,6 +406,11 @@ int main(int argc, char **argv)
 			}
 
 			// check the CRC
+			CRC16 c = CRC16();
+			c.update((char *)"\xA1\xA1\xA1\xFE", 4);
+			unsigned int crc = c.update(idambuf, 4);
+			printf(" CRC=%04X %s\n", (idambuf[4] << 8) | idambuf[5],
+					((unsigned int)((idambuf[4] << 8) | idambuf[5])==crc) ? "(ok)" : "BAD");
 
 			delete idambuf;
 		} else if (bits == 0x44895545) {
