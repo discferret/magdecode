@@ -368,6 +368,7 @@ int main(int argc, char **argv)
 	unsigned long bits = 0;
 	unsigned int num_idam = 0, num_dam = 0;
 	size_t next_data_dump = 0;
+	bool chk_data_crc = false;
 	for (size_t i=0; i<mfmbits.size(); i++) {
 		size_t dump=0;
 
@@ -382,6 +383,7 @@ int main(int argc, char **argv)
 			printf("IDAM at %d\n", i+1);
 			num_idam++;
 			dump = 6;
+			chk_data_crc = false;
 
 			// decode the IDAM
 			unsigned char *idambuf = new unsigned char[6];
@@ -409,7 +411,7 @@ int main(int argc, char **argv)
 			CRC16 c = CRC16();
 			c.update((char *)"\xA1\xA1\xA1\xFE", 4);
 			unsigned int crc = c.update(idambuf, 4);
-			printf(" CRC=%04X %s\n", (idambuf[4] << 8) | idambuf[5],
+			printf("; CRC=%04X %s\n", (idambuf[4] << 8) | idambuf[5],
 					((unsigned int)((idambuf[4] << 8) | idambuf[5])==crc) ? "(ok)" : "BAD");
 
 			delete idambuf;
@@ -421,6 +423,7 @@ int main(int argc, char **argv)
 			num_dam++;
 			dump = next_data_dump;
 			next_data_dump = 0;
+			chk_data_crc = true;
 		}
 
 		if (dump > 0) {
@@ -429,11 +432,20 @@ int main(int argc, char **argv)
 			// i+1 because "i" is the last bit of the (I)DAM marker; we want
 			// the first bit of the new data byte (encoded word).
 			//
-			char *buffer = new char[dump];
-			for (size_t x=0; x<dump; x++) {
+			unsigned char *buffer = new unsigned char[dump+2];
+			for (size_t x=0; x<dump+2; x++) {
 				buffer[x] = decodeMFM(mfmbits, i+(x*16)+1);
 			}
 			hex_dump(buffer, dump);
+
+			if (chk_data_crc) {
+				CRC16 c = CRC16();
+				c.update((char *)"\xA1\xA1\xA1\xFB", 4);
+				unsigned int crc = c.update(buffer, dump);
+				printf("\tData record CRC=%04X %s\n", (buffer[dump+0] << 8) | buffer[dump+1],
+						((unsigned int)((buffer[dump+0] << 8) | buffer[dump+1])==crc) ? "(ok)" : "BAD");
+			}
+
 			delete[] buffer;
 		}
 	}
