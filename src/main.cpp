@@ -51,7 +51,7 @@ class CRC16 {
 
 			for (size_t i=0; i<len; i++) {
 				char x = ((unsigned char *)buf)[i];
-				crc = ((crc << 8) ^ this->table[((crc >> 8) ^ (0xff & x))]) & 0xffff;
+				crc = ((crc << 8) ^ this->table[((crc >> 8) ^ x) & 0xff]) & 0xffff;
 			}
 
 			return crc;
@@ -156,7 +156,7 @@ unsigned char decodeMFM(vector<bool> bits, size_t startpos)
 int main(int argc, char **argv)
 {
 	unsigned int buf[128*1024];
-	size_t buflen;
+	ssize_t buflen;
 	size_t maxval = 0;
 	size_t minval = ((size_t)-1);
 
