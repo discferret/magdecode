@@ -240,7 +240,36 @@ int main(int argc, char **argv)
 	}
 #endif
 
-	// Start by clipping histogram noise. Need to find outliers, then eliminate them.
+	// Apply a moving average to the histogram data
+	// This eliminates small spikes in the data set, and makes the peak detection
+	// a bit more reliable.
+
+	do {
+		// Start by making a copy of the original histogram
+		unsigned int *histogram_copy = new unsigned int[maxval - minval + 1];
+		for (size_t z=0; z<(maxval-minval+1); z++) histogram_copy[z] = histogram[z];
+
+		// Number of previous values to take into account
+		const int HIST_PKDET_AVG_BINS = 16;
+
+		// Apply moving average to histogram data
+		for (size_t x=1; x<(maxval-minval+1); x++) {
+			unsigned long accum = 0;
+			unsigned int n = 0;
+			for (ssize_t y=(x-HIST_PKDET_AVG_BINS); y<(ssize_t)x; y++) {
+				if (y>=0) {
+					accum += histogram_copy[y];
+					n++;
+				}
+			}
+			if (n>0) accum /= n; else accum = 0;
+			histogram[x] = accum;
+		}
+
+		delete histogram_copy;
+	} while (0);
+
+	// Clip histogram noise. Need to find outliers, then eliminate them.
 	// For now, just throw away anything with a count less than 1/10th of the mean.
 	for (size_t i=0; i<=(maxval-minval); i++) {
 		if (histogram[i] < round(mean * 0.1)) histogram[i] = 0;
