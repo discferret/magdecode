@@ -188,7 +188,7 @@ int main(int argc, char **argv)
 	printf("time(ms) = %f\n", ((float)buftm) * 25e-9 * 1000);
 	printf("est rpm = %f\n", 60 * (1/(((float)buftm) * 25e-9)));
 	printf("\n");
-	printf("maxval = %d\nminval = %d\nspan   = %d\n", maxval, minval, maxval - minval);
+	printf("maxval = %lu\nminval = %lu\nspan   = %lu\n", maxval, minval, maxval - minval);
 	printf("\n");
 
 	// allocate memory for a histogram
@@ -324,7 +324,7 @@ int main(int argc, char **argv)
 	if (numpeaks > 0) {
 		printf("%d peaks found:\n", numpeaks);
 		for (int i=0; i<numpeaks; i++) {
-			printf("\tpeak #%d: %3d\n", i+1, peaks[i]+minval);
+			printf("\tpeak #%d: %3lu\n", i+1, peaks[i]+minval);
 		}
 	} else {
 		printf("No peaks found.\n");
@@ -393,7 +393,7 @@ int main(int argc, char **argv)
 		t = ((1.0 - change_frac) * t) + (change_frac * ((float)buf[i] / t_mult));
 	}
 
-	printf("mfmbits count = %d\n", mfmbits.size());
+	printf("mfmbits count = %lu\n", mfmbits.size());
 
 
 	// Now process the MFM bitstream to find the sync markers
@@ -412,7 +412,7 @@ int main(int argc, char **argv)
 			// ID Address Mark
 			// i+1 because "i" is the last bit of the IDAM marker; we want the
 			// first bit of the new data byte (encoded word).
-			printf("IDAM at %d\n", i+1);
+			printf("IDAM at %lu\n", i+1);
 			num_idam++;
 			dump = 6;
 			chk_data_crc = false;
@@ -451,7 +451,7 @@ int main(int argc, char **argv)
 			// Data Address Mark
 			// i+1 because "i" is the last bit of the DAM marker; we want the
 			// first bit of the new data byte (encoded word).
-			printf("DAM at %d%s\n", i+1, (next_data_dump == 0) ? " [ERR: no preceding IDAM]" : "");
+			printf("DAM at %lu%s\n", i+1, (next_data_dump == 0) ? " [ERR: no preceding IDAM]" : "");
 			num_dam++;
 			dump = next_data_dump;
 			next_data_dump = 0;
