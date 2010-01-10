@@ -156,7 +156,7 @@ unsigned char decodeMFM(vector<bool> bits, size_t startpos)
 int main(int argc, char **argv)
 {
 	unsigned int buf[128*1024];
-	ssize_t buflen;
+	size_t buflen;
 	size_t maxval = 0;
 	size_t minval = ((size_t)-1);
 
@@ -165,12 +165,16 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	buflen = LoadTrackImage(argv[1], buf);
-	if (buflen < 1) {
-		cout << "error reading input file \"" << argv[1] << "\"\n";
-		return -1;
+	// limit scope of 'x'
+	{
+		ssize_t x = LoadTrackImage(argv[1], buf);
+		if (x < 1) {
+			cout << "error reading input file \"" << argv[1] << "\"\n";
+			return -1;
+		}
+		buflen = x;
+		printf("buflen = %lu\n", (unsigned long)buflen);
 	}
-	printf("buflen = %lu\n", (unsigned long)buflen);
 
 	// calculate RPM and data rate
 	unsigned long buftm = 0;
@@ -327,38 +331,37 @@ int main(int argc, char **argv)
 	vector<bool> mfmbits;
 
 	// Iterate over input stream and decode
+	const float change_frac = 0.05;
 	for (size_t i=0; i<buflen; i++) {
 		// Calculate error values for this timing value vs. 1t, 1.5t and 2.0t
 		float error_t10 = fabs((buf[i] / 1.0) - t);
 		float error_t15 = fabs((buf[i] / 1.5) - t);
 		float error_t20 = fabs((buf[i] / 2.0) - t);
+		float t_mult;
 
 		// Figure out which error is the lowest
 		if ((error_t10 < error_t15) && (error_t10 < error_t20)) {
 			// t1.0 is the lowest. "01" sequence.
 			mfmbits.push_back(false);
 			mfmbits.push_back(true);
-
-			// Update reference T
-			t = (0.95 * t) + (0.05 * (buf[i] / 1.0));
+			t_mult = 1.0;
 		} else if ((error_t15 < error_t10) && (error_t15 < error_t20)) {
 			// t1.5 is the lowest. "001" sequence.
 			mfmbits.push_back(false);
 			mfmbits.push_back(false);
 			mfmbits.push_back(true);
-
-			// Update reference T
-			t = (0.95 * t) + (0.05 * (buf[i] / 1.5));
+			t_mult = 1.5;
 		} else {
 			// t2.0 is the lowest. "0001" sequence.
 			mfmbits.push_back(false);
 			mfmbits.push_back(false);
 			mfmbits.push_back(false);
 			mfmbits.push_back(true);
-
-			// Update reference T
-			t = (0.95 * t) + (0.05 * (buf[i] / 2.0));
+			t_mult = 2.0;
 		}
+
+		// Update reference T
+		t = ((1.0 - change_frac) * t) + (change_frac * ((float)buf[i] / t_mult));
 	}
 
 	printf("mfmbits count = %d\n", mfmbits.size());
