@@ -11,6 +11,7 @@ void hex_dump(void *data, int size)
      */
 
     unsigned char *p = data;
+    unsigned long addr = 0;
     unsigned char c;
     int n;
     char bytestr[4] = {0};
@@ -20,8 +21,8 @@ void hex_dump(void *data, int size)
     for(n=1;n<=size;n++) {
         if (n%16 == 1) {
             /* store address for this line */
-            snprintf(addrstr, sizeof(addrstr), "%.4x",
-               ((unsigned int)p-(unsigned int)data) );
+            snprintf(addrstr, sizeof(addrstr), "%.4lX",
+               addr);
         }
             
         c = *p;
@@ -48,6 +49,7 @@ void hex_dump(void *data, int size)
             strncat(charstr, " ", sizeof(charstr)-strlen(charstr)-1);
         }
         p++; /* next byte */
+		addr++; /* increment address */
     }
 
     if (strlen(hexstr) > 0) {
