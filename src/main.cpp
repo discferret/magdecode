@@ -373,7 +373,7 @@ int main(int argc, char **argv)
 		size_t dump=0;
 
 		// get next bit
-		bits = (bits << 1) + (mfmbits[i] ? 1 : 0);
+		bits = ((bits << 1) + (mfmbits[i] ? 1 : 0)) & 0xffffffff;
 
 		// compare buffer with sync-longword (sync-A1 : FE, aka IDAM)
 		if (bits == 0x44895554) {
