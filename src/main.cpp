@@ -266,7 +266,7 @@ int main(int argc, char **argv)
 			histogram[x] = accum;
 		}
 
-		delete histogram_copy;
+		delete[] histogram_copy;
 	} while (0);
 
 	// Clip histogram noise. Need to find outliers, then eliminate them.
