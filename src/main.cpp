@@ -302,8 +302,14 @@ int main(int argc, char **argv)
 	// Positions of detected peaks
 	size_t peaks[32];
 	// Number of detected peaks
-	int numpeaks = 0;
+	size_t numpeaks = 0;
 	for (size_t i=1; i<=(maxval - minval); i++) {
+		// break if max number of peaks has been exceeded
+		if (numpeaks > (sizeof(peaks)/sizeof(peaks[0]))) {
+			printf("WARNING: Maximum number of peaks exceeded!\n");
+			break;
+		}
+
 		// calculate delta
 		ssize_t delta = histogram[i] - lasthist;
 
@@ -322,9 +328,9 @@ int main(int argc, char **argv)
 
 	// List all found peaks
 	if (numpeaks > 0) {
-		printf("%d peaks found:\n", numpeaks);
-		for (int i=0; i<numpeaks; i++) {
-			printf("\tpeak #%d: %3lu\n", i+1, peaks[i]+minval);
+		printf("%lu peaks found:\n", numpeaks);
+		for (size_t i=0; i<numpeaks; i++) {
+			printf("\tpeak #%lu: %3lu\n", i+1, peaks[i]+minval);
 		}
 	} else {
 		printf("No peaks found.\n");
