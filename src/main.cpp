@@ -432,19 +432,48 @@ int main(int argc, char **argv)
 	 *
 	 * This consists of:
 	 *   A data synchroniser which forces RD_DATA to be active for 2 clock cycles.
-	 *   A counter which increments constantly while the PLL 
+	 *   A counter which increments constantly while the PLL is running, and is 
+	 *     reset to zero when a data bit is detected.
+	 *   A flip-flop which changes state when the counter reaches half its maximum
+	 *     value
+	 *
+	 * The actual values of NSECS_PER_ACQ and NSECS_PER_PLLCK don't really matter.
+	 * What actually matters is the ratio between the two -- if you have a 40MHz
+	 * acquisition clock and a PLL clock of 16MHz (data rate 500kbps), then the
+	 * starting values will be NSECS_PER_ACQ=25 and NSECS_PER_PLLCK=62.5. Problem
+	 * is, 62.5 isn't an integer multiple, so we might have issues with
+	 * short-term clock jitter. So we multiply by two, which gives us
+	 * NSECS_PER_ACQ=50 and NSECS_PER_PLLCK=125, and a timestep of 0.5ns. Much
+	 * better.
+	 *
+	 * We can also change the PJL Counter maximum value if it makes the math
+	 * work out better. Be careful though -- reducing the value WILL reduce the
+	 * number of available phase-shift steps and thus the PLL accuracy.
+	 *
+	 * Now we know the ticks-per-acqclk and ticks-per-pllclk values, we can
+	 * figure out the optimal timer increment --
+	 *   TIMER_INCREMENT = gcd(NSECS_PER_ACQ, NSECS_PER_PLLCK)
+	 *   (gcd == greatest common divisor)
+	 *
+	 * Ideally we want a TIMER_INCREMENT greater than 1. If we get an increment
+	 * of 1, then the loop has to run at 1x speed and will be SLOW. Try
+	 * increasing NSECS_PER_ACQ and NSECS_PER_PLLCK (multiply them by the same
+	 * number e.g. 2, 4, 8, ...), then run the gcd again. Problem is, this isn't
+	 * going to gain much if anything in speed because you're going to be running
+	 * more loops at a faster rate, thus it's a zero-gain :-/
 	 */
 
-	// Nanoseconds counters. Increment once per loop or "virtual" nanosecond
+	// Nanoseconds counters. Increment once per loop or "virtual" nanosecond.
 	unsigned long nsecs1 = 0, nsecs2=0;
 	// Number of nanoseconds per acq tick -- (1/freq)*1e9. This is valid for 40MHz.
-	const unsigned long NSECS_PER_ACQ = 25;
+	const unsigned long NSECS_PER_ACQ = 50;
 	// Number of nanoseconds per PLLCK tick -- (1/16e6)*1e9. 16MHz. 
 	// This should be the reciprocal of 32 times the data rate in kbps, multiplied
 	// by 1e9 to get the time in nanoseconds.
-	const unsigned long NSECS_PER_PLLCK = 125/2;
-	// Number of clock increments per loop (timing granularity)
-	const unsigned long TIMER_INCREMENT = 1;
+	const unsigned long NSECS_PER_PLLCK = 125*2;
+	// Number of clock increments per loop (timing granularity). Best-case value
+	// for this is gcd(NSECS_PER_ACQ, NSECS_PER_PLLCK).
+	const unsigned long TIMER_INCREMENT = 25;
 	// Maximum value of the PJL counter. Determines the granularity of phase changes.
 	const unsigned char PJL_COUNTER_MAX = 16;
 
