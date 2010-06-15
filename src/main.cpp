@@ -358,12 +358,13 @@ int main(int argc, char **argv)
 	// histogram is a valid FM histogram, and a 3-peak (1t:1.5t:2t) histogram
 	// is a valid MFM histogram.
 
-	// Data decoder begins here.
-
-	// Current 1t reference. Assumed to be the position of the 1st peak.
-	float t = peaks[0] + minval;
 	// Bit-vector to store MFM stream
 	vector<bool> mfmbits;
+
+	// Data decoder begins here.
+#if 0
+	// Current 1t reference. Assumed to be the position of the 1st peak.
+	float t = peaks[0] + minval;
 
 	// Iterate over input stream and decode
 	const float change_frac = 0.05;
@@ -398,7 +399,139 @@ int main(int argc, char **argv)
 		// Update reference T
 		t = ((1.0 - change_frac) * t) + (change_frac * ((float)buf[i] / t_mult));
 	}
+#else
 
+#ifdef VCD
+	FILE *vcd = fopen("values.vcd", "wt");
+	fprintf(vcd, "$version DiscFerret Analyser D2/DPLL 0.1 $end\n"
+			"$timescale 1 ns $end\n"
+			"$var reg 1 * clock $end\n"
+			"$var reg 1 ' pll_clock $end\n"
+			"$var reg 1 ! rd_data $end\n"
+			"$var reg 1 %% rd_data_latched $end\n"
+			"$var reg 1 ^ shaped_data $end\n"
+			"$var reg 8 & pjl_shifter $end\n"
+			"$var reg 1 ( data_window $end\n"
+			"$upscope $end\n"
+			"$enddefinitions $end\n"
+			"$dumpall\n"
+			"0*\n"
+			"0'\n"
+			"0!\n"
+			"0%%\n"
+			"0^\n"
+			"b00000000 &\n"
+			"0(\n"
+			"$end\n"
+		   );
+#endif
+	/**
+	 * This is a software implementation of Jim Thompson's Phase-Jerked Loop
+	 * design, available from AnalogInnovations.com as the PDF file
+	 * "FloppyDataExtractor.pdf".
+	 *
+	 * This consists of:
+	 *   A data synchroniser which forces RD_DATA to be active for 2 clock cycles.
+	 *   A counter which increments constantly while the PLL 
+	 */
+
+	// Nanoseconds counters. Increment once per loop or "virtual" nanosecond
+	unsigned long nsecs1 = 0, nsecs2=0;
+	// Number of nanoseconds per acq tick -- (1/freq)*1e9. This is valid for 40MHz.
+	const unsigned long NSECS_PER_ACQ = 25;
+	// Number of nanoseconds per PLLCK tick -- (1/16e6)*1e9. 16MHz. 
+	// This should be the reciprocal of 32 times the data rate in kbps, multiplied
+	// by 1e9 to get the time in nanoseconds.
+	const unsigned long NSECS_PER_PLLCK = 125/2;
+	// Number of clock increments per loop (timing granularity)
+	const unsigned long TIMER_INCREMENT = 1;
+	// Maximum value of the PJL counter. Determines the granularity of phase changes.
+	const unsigned char PJL_COUNTER_MAX = 16;
+
+	// Iterator for data buffer
+	size_t i = 0;
+
+	// True if RD_DATA was high in this clock cycle
+	bool rd_latch = false;
+	// Same but only active for 2Tcy (SHAPED_DATA)
+	int shaped_data = 0;
+
+	// Phase Jerked Loop counter
+	unsigned char pjl_shifter = 0;
+
+	// data window
+	unsigned char data_window = 0;
+
+	do {
+#ifdef VCD
+		{ static unsigned long long clocks = 0; fprintf(vcd, "#%lld\n", clocks++); }
+#endif
+		// Increment counters
+		nsecs1 += TIMER_INCREMENT;
+		nsecs2 += TIMER_INCREMENT;
+#ifdef VCD
+		if ((nsecs1 % NSECS_PER_ACQ) == 0) { fprintf(vcd, "1*\n"); }
+		if ((nsecs1 % NSECS_PER_ACQ) == (NSECS_PER_ACQ/2)) { fprintf(vcd, "0*\n"); }
+		if (nsecs1 == (buf[i] * NSECS_PER_ACQ)) { fprintf(vcd, "0!\n"); } else { fprintf(vcd, "1!\n"); }
+		if ((nsecs1 % NSECS_PER_PLLCK) == 0) { fprintf(vcd, "1'\n"); }
+		if ((nsecs1 % NSECS_PER_PLLCK) == (NSECS_PER_PLLCK/2)) { fprintf(vcd, "0'\n"); }
+#endif
+		// Loop 1 -- floppy disc read channel
+		if (nsecs1 >= (buf[i] * NSECS_PER_ACQ)) {
+			// Flux transition. Set the read latches.
+			rd_latch = true;
+			shaped_data = 2;
+
+			// Update nanoseconds counter for read channel, retain error factor
+			nsecs1 -= (buf[i] * NSECS_PER_ACQ);
+
+			// Update buffer position
+			i++;
+		}
+#ifdef VCD
+		fprintf(vcd, "%d%%\n", rd_latch);
+		fprintf(vcd, "%d^\n", (shaped_data > 0) ? 1 : 0);
+#endif
+		// Loop 2 -- DPLL channel
+		if (nsecs2 >= NSECS_PER_PLLCK) {
+			// Update nanoseconds counter for PLL, retain error factor
+			nsecs2 -= NSECS_PER_PLLCK;
+
+			// PJL loop
+			if (shaped_data > 0) {
+				pjl_shifter = 0;
+			} else {
+				// increment shifter
+				pjl_shifter = (pjl_shifter + 1) % PJL_COUNTER_MAX;
+			}
+
+			// DWIN detect
+			if (pjl_shifter == (PJL_COUNTER_MAX / 2)) {
+				// Data window toggle. Latch the current RD_LATCH blob into the output buffer.
+				mfmbits.push_back(rd_latch);
+				// Clear the data latch ready for the next data window.
+				rd_latch = false;
+				// Update DWIN
+				data_window ^= 0x01;
+			}
+
+			// Update shaped-data time counter
+			if (shaped_data > 0) shaped_data--;
+		}
+
+#ifdef VCD
+		fprintf(vcd, "%d(\n", data_window);
+		fputc('b', vcd);
+		for (int x=0; x<8; x++) if (pjl_shifter & (1<<(7-x))) fputc('1', vcd); else fputc('0', vcd);
+		fprintf(vcd, " &\n");
+		if (mfmbits.size() == 1000) { printf("Got 1000 bits, terminating run.\n"); break; }
+#endif
+	} while (i < buflen);
+
+#ifdef VCD
+	fclose(vcd);
+#endif
+#endif
 	printf("mfmbits count = %lu\n", mfmbits.size());
 
 
