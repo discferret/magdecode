@@ -127,6 +127,11 @@ size_t LoadTrackImage(const char *filename, unsigned int *buffer)
 		}
 	}
 
+	// if carry more than zero, dump it into the buffer
+	if (carry > 0) {
+		buffer[count++] = carry;
+	}
+
 	// free the file buffer
 	delete[] buf;
 
@@ -160,6 +165,9 @@ int main(int argc, char **argv)
 	size_t maxval = 0;
 	size_t minval = ((size_t)-1);
 
+	const double CLK_FRQ = 100e6;
+	const double CLK_TM = 1.0 / CLK_FRQ;
+
 	if (argc < 2) {
 		cout << "syntax: " << argv[0] << " filename\n";
 		return -1;
@@ -169,7 +177,7 @@ int main(int argc, char **argv)
 	{
 		ssize_t x = LoadTrackImage(argv[1], buf);
 		if (x < 1) {
-			cout << "error reading input file \"" << argv[1] << "\"\n";
+			cout << "error reading input file \"" << argv[1] << "\", code " << x << "\n";
 			return -1;
 		}
 		buflen = x;
@@ -184,9 +192,9 @@ int main(int argc, char **argv)
 		if (minval > buf[i]) minval = buf[i];
 	}
 	printf("total timing val = %lu\n", buftm);
-	printf("time(secs) = %f\n", ((float)buftm) * 25e-9);
-	printf("time(ms) = %f\n", ((float)buftm) * 25e-9 * 1000);
-	printf("est rpm = %f\n", 60 * (1/(((float)buftm) * 25e-9)));
+	printf("time(secs) = %f\n", ((float)buftm) * CLK_TM);
+	printf("time(ms) = %f\n", ((float)buftm) * CLK_TM * 1000);
+	printf("est rpm = %f\n", 60 * (1/(((float)buftm) * CLK_TM)));
 	printf("\n");
 	printf("maxval = %lu\nminval = %lu\nspan   = %lu\n", maxval, minval, maxval - minval);
 	printf("\n");
@@ -466,16 +474,17 @@ int main(int argc, char **argv)
 	// Nanoseconds counters. Increment once per loop or "virtual" nanosecond.
 	unsigned long nsecs1 = 0, nsecs2=0;
 	// Number of nanoseconds per acq tick -- (1/freq)*1e9. This is valid for 40MHz.
-	const unsigned long NSECS_PER_ACQ = 50;
+	const unsigned long NSECS_PER_ACQ = CLK_TM; //(1e9 / 100e6);
 	// Number of nanoseconds per PLLCK tick -- (1/16e6)*1e9. 16MHz. 
 	// This should be the reciprocal of 32 times the data rate in kbps, multiplied
 	// by 1e9 to get the time in nanoseconds.
-	const unsigned long NSECS_PER_PLLCK = 125*2;
+	// That is, (1/(TRANSITIONS_PER_BITCELL * PJL_COUNTER_MAX * DATA_RATE))*1e9
+	const unsigned long NSECS_PER_PLLCK = (1e9 / 32e6);
 	// Number of clock increments per loop (timing granularity). Best-case value
 	// for this is gcd(NSECS_PER_ACQ, NSECS_PER_PLLCK).
-	const unsigned long TIMER_INCREMENT = 25;
+	const unsigned long TIMER_INCREMENT = 1;
 	// Maximum value of the PJL counter. Determines the granularity of phase changes.
-	const unsigned char PJL_COUNTER_MAX = 16;
+	const unsigned char PJL_COUNTER_MAX = 64;
 
 	// Iterator for data buffer
 	size_t i = 0;
